@@ -53,6 +53,6 @@ server.listen(process.env.PORT || port, () =>
 		`
 		Example app listening on port ${process.env.PORT}!
 		http://cmd => ipconfig:${process.env.PORT}
-		http://192.168.1.47:${process.env.PORT}(depending on your ipconfig address)`
+		http://192.168.1.47:${process.env.PORT} `
 	)
 );

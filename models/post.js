@@ -8,7 +8,7 @@ const PostSchema = new mongoose.Schema(
 			ref: "users",
 			required: true,
 		},
-		message: { type: "string" },
+		content: { type: "string" },
 		images: { type: "string" },
 		likes: { type: Number, required: true },
 		createdAt: { type: Date, default: Date.now },
