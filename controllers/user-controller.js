@@ -1,3 +1,4 @@
+const bcrypt = require("bcrypt");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const path = require("path");
@@ -50,7 +51,7 @@ module.exports = {
 		try {
 			const tokenPayload = req.tokenPayload;
 			const user = await User.findOneAndUpdate(
-				{phone: tokenPayload.phone},
+				{ phone: tokenPayload.phone },
 				{ refreshToken: "" },
 				{ new: true }
 			);
@@ -85,26 +86,6 @@ module.exports = {
 				{ expiresIn: "5d" }
 			);
 			res.json({ accessToken });
-			// const test = decodeToken(refreshToken);
-			// console.log("decode: ",test);
-			// // const user = await User.findOne({ phone: phone });
-			// jwt.verify(
-			// 	refreshToken,
-			// 	process.env.REFRESH_TOKEN_SECRET,
-			// 	(err, data) => {
-			// 		console.log(err, data.phone);
-
-			// 		if (err) res.sendStatus(403);
-
-			// 		const accessToken = jwt.sign(
-			// 			{ phone: data.phone },
-			// 			process.env.ACCESS_TOKEN_SECRET,
-			// 			{ expiresIn: "5d" }
-			// 		);
-			// 		res.json({ accessToken });
-			// 		// next();
-			// 	}
-			// );
 		} catch (error) {
 			res.status(500).json("Internal Server Error");
 		}
@@ -114,13 +95,10 @@ module.exports = {
 		try {
 			const { phone, password } = req.body;
 
-			const acc = await Account.findOne({
-				phone: phone,
-				password: password, // hash later
-			});
-			
+			const acc = await Account.findOne({phone: phone});
+
 			// jwt + id acc
-			if (acc !== null) {
+			if (acc && (await bcrypt.compare(password, acc.password))) {
 				const accessToken = jwt.sign(
 					{ phone: phone },
 					process.env.ACCESS_TOKEN_SECRET,
@@ -136,12 +114,11 @@ module.exports = {
 					{ refreshToken: refreshToken },
 					{ new: true }
 				);
-				console.log("login: ", user);
+				console.log("login: ", user, accessToken);
 				res.status(200).json({
 					message: "Login successful",
 					user: user,
 					accessToken,
-					// refreshToken,
 				});
 				// const user = await User.findOne({ idAcc: acc._id });
 				// let room= [];
@@ -266,10 +243,12 @@ module.exports = {
 					message: "acc already exists",
 				});
 			}
-
+			const saltRounds = parseInt(process.env.SALT_ROUNDS, 10);
+			const hashedPassword = await bcrypt.hash(password, saltRounds);
+			console.log("hashedPassword: ", hashedPassword);
 			const account = new Account({
 				phone: domesticPhoneNumber,
-				password,
+				password: hashedPassword,
 			});
 			await account.save({ session });
 
