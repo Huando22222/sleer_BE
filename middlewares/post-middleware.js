@@ -1,6 +1,12 @@
 const path = require("path");
 const multer = require("multer");
 const fs = require("fs");
+const CryptoJS = require("crypto-js");
+
+const hashFileName = (fileName, key) => {
+	const hash = CryptoJS.HmacSHA256(fileName, key).toString(CryptoJS.enc.Hex);
+	return hash;
+};
 
 const createMulterMiddleware = (uploadPath, fileName) => {
 	const storage = multer.diskStorage({
@@ -8,8 +14,11 @@ const createMulterMiddleware = (uploadPath, fileName) => {
 			cb(null, uploadPath);
 		},
 		filename: function (req, file, cb) {
-			console.log("Uploading file:", file.originalname);
-			cb(null, `${fileName}_${file.originalname}`);
+			// console.log("origin file name", file.originalname);
+			console.log("Uploading file:", fileName);
+			let dbFileName = fileName + path.extname(file.originalname);
+			cb(null, `${dbFileName}`); 
+			req.imageName = dbFileName;
 		},
 	});
 
@@ -18,12 +27,20 @@ const createMulterMiddleware = (uploadPath, fileName) => {
 
 
 module.exports = {
+	AuthorizeAccess: (req, res, next) => {
+		try {
+			const postId = req.params.postId;
+			// Trả về next nếu userId là bạn của chủ sở hữu postId, ngược lại false
+			next();
+		} catch (error) {
+			next(error);
+		}
+	},
+
     UploadPhoto: (req, res, next) => {
 		try {
-			//tam thoi thoi //truyen vao header roi gui về server
-			//path = phone  , name = phone+date => hash da~
-			const phone = req.tokenPayload.phone; //folder
 			
+			const phone = req.tokenPayload.phone; //folder
 			
 			console.log("Uploading phôto");
 			if (!phone) {
@@ -40,7 +57,14 @@ module.exports = {
 			}
 
 			const fileName = `${phone}_${Date.now()}`;
-			const uploadPhoto = createMulterMiddleware(uploadPath , fileName);
+			const hashedFileName = hashFileName(
+				fileName,
+				process.env.HASH_FILE_NAME
+			);
+			const uploadPhoto = createMulterMiddleware(
+				uploadPath,
+				hashedFileName
+			);
 
 			uploadPhoto.single("image")(req, res, (err) => {
 				if (err instanceof multer.MulterError) {
@@ -50,6 +74,7 @@ module.exports = {
 					console.log(err);
 					return res.status(500).json({ error: "Server error" });
 				}
+				
 				next();
 			});
 		} catch (error) {

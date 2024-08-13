@@ -9,9 +9,11 @@ const UserSchema = new mongoose.Schema(
 			{ type: mongoose.Schema.Types.ObjectId, ref: "users", default: [] },
 		],
 		refreshToken: { type: String, default: "" },
-		rooms: [{ type: mongoose.Schema.Types.ObjectId, default: [] } ],
+		rooms: [{ type: mongoose.Schema.Types.ObjectId, default: [] }],
 		// idAcc: { type: String, required: true },
 		phone: { type: String, required: true, unique: true },
+		online: { type: Boolean, default: true },
+		socketId: { type: String, default: "" },
 		createdAt: { type: Date, default: Date.now },
 	},
 	{ timestamps: true }

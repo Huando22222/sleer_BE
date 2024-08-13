@@ -13,8 +13,12 @@ const io = require("socket.io")(server, {
 	cors: {
 		origin: "http://localhost:3000",
 	},
+
+	pingInterval: 5000, 
+	pingTimeout: 2000,
 });
-require('./sockets/chat')(io);
+// require('./sockets/chat')(io);
+require('./sockets/post')(io);
 
 
 

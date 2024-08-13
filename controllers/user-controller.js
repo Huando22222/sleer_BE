@@ -114,12 +114,14 @@ module.exports = {
 					{ refreshToken: refreshToken },
 					{ new: true }
 				);
-				console.log("login: ", user, accessToken);
-				res.status(200).json({
-					message: "Login successful",
-					user: user,
-					accessToken,
-				});
+				// console.log("login: ", user, accessToken);
+				res.status(200)
+					.json({
+						message: "Login successful",
+						user: user,
+						accessToken,
+					})
+					// console.log("logged: " + user, accessToken)
 				// const user = await User.findOne({ idAcc: acc._id });
 				// let room= [];
 				// /*const */
@@ -245,7 +247,6 @@ module.exports = {
 			}
 			const saltRounds = parseInt(process.env.SALT_ROUNDS, 10);
 			const hashedPassword = await bcrypt.hash(password, saltRounds);
-			console.log("hashedPassword: ", hashedPassword);
 			const account = new Account({
 				phone: domesticPhoneNumber,
 				password: hashedPassword,

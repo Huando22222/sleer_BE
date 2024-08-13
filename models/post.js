@@ -8,9 +8,15 @@ const PostSchema = new mongoose.Schema(
 			ref: "users",
 			required: true,
 		},
-		content: { type: "string" },
-		images: { type: "string" },
-		likes: { type: Number, required: true },
+		content: { type: String, default: "" },
+		image: { type: String, required: true },
+		reaction: { type: Number, default: 0 },
+		recipients: [
+			{
+				user: { type: mongoose.Schema.Types.ObjectId, ref: "users" },
+				sent: { type: Boolean, default: false },
+			},
+		],
 		createdAt: { type: Date, default: Date.now },
 	},
 	{ timestamps: true }
