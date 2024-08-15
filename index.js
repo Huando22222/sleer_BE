@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const app = express();
 const route = require("./routes/index-routes");
+const port = 3000;
 
 ////socket zone
 const server = require("http").Server(app);
@@ -18,15 +19,16 @@ const io = require("socket.io")(server, {
 	pingTimeout: 2000,
 });
 // require('./sockets/chat')(io);
-require('./sockets/post')(io);
+require('./sockets/post-chat')(io);
 
 
+app.use((req, res, next) => {
+	req.io = io;
+	next();
+});
 
-// app.use(express.static('images'));
 app.use(express.static('public'));
-// app.use(express.static(path.join("./BE_projMobileApp", "images")));
-const port = 3000;
-// app.use(express.static(path.join(__dirname, "public/images")));
+
 
 mongoose
 	.connect(process.env.MONGO_URL, {
@@ -56,7 +58,6 @@ server.listen(process.env.PORT || port, () =>
 	console.log(
 		`
 		Example app listening on port ${process.env.PORT}!
-		http://cmd => ipconfig:${process.env.PORT}
-		http://192.168.1.47:${process.env.PORT} `
+		http://cmd => ipconfig:${process.env.PORT}`
 	)
 );

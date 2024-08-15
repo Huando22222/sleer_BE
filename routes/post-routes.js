@@ -5,7 +5,6 @@ const router = express.Router();
 const AuthorizationMiddleware = require("../middlewares/authorization-middleware");
 const PostMiddleware = require("../middlewares/post-middleware");
 
-
 router.post(
 	"/new",
 	AuthorizationMiddleware.VerifyAccessToken,
@@ -23,7 +22,7 @@ router.get(
 	"/",
 	AuthorizationMiddleware.VerifyAccessToken,
 	PostsController.GetPost,
-);
+); //list post that user unseen
 
 
 module.exports = router;

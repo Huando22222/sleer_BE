@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs");
-const archiver = require("archiver");
+// const archiver = require("archiver");
 
 const Post = require("../models/post");
 const User = require("../models/user");
@@ -9,7 +9,8 @@ module.exports = {
 	NewPost: async (req, res) => {
 		try {
 			const { id, content, nonRecipients } = req.body;
-			// const phone = req.tokenPayload.phone;
+			// const phone = req.payload.phone;
+			//chua xac thuc nguoi dang bai
 			console.log("body: ", id);
 
 			const user = await User.findById(id).populate("friends");
@@ -42,15 +43,17 @@ module.exports = {
 				recipients: recipients,
 			});
 
-			await post
-				.save()
-				.then(() => {})
-				.catch((err) => console.log(err));
-			// const newP = await Post.findOne({owner:owner}).sort({ createdAt: -1 }).populate("owner")
-			//   // .populate("owner")
+			await post.save();
+			//chua xac thuc nguoi dung da nhan hay chua //ack
+			recipients.forEach((recipient) => {
+				req.io.to(recipient.user.toString()).emit("new_post", {
+					postId: post._id,
+					ownerId: user._id,
+					ownerName: user.displayName,
+				});
+			});
 			res.status(200).json({
 				message: "posted successfully",
-				// post: newP
 			});
 		} catch (error) {
 			console.error(error);
@@ -60,22 +63,48 @@ module.exports = {
 
 	GetPost: async (req, res) => {
 		try {
-			// must add fr first // this is for temporary
-			const tokenPayload = req.tokenPayload;
-			const posts = await Post.find()
+			const payload = req.payload;
+			const payloadId = req.payload.id;
+
+			if (!Array.isArray(payloadId) || payloadId.length === 0) {
+				return res
+					.status(400)
+					.json({ message: "Invalid or empty postIds array" });
+			}
+
+			const posts = await Post.find(
+				{ _id: { $in: payloadId } }, //?? id or _id ??
+				{ recipients: 0 }
+			)
 				.populate({
 					path: "owner",
-					select: "_id displayName avatar phone createdAt",
+					select: "_id displayName avatar phone",
 				})
 				.sort({ createdAt: -1 });
-			
+
 			const baseUrl = `${req.protocol}://${req.get("host")}`;
 			const postsWithImageUrls = posts.map((post) => ({
 				...post._doc,
-				image: `${baseUrl}/posts/${post.owner.phone}/${post.image}`,
+				image: post.image
+					? `${baseUrl}/posts/${post.owner.phone}/${post.image}`
+					: null,
 			}));
-			
 			res.status(200).json({ message: "OK", data: postsWithImageUrls });
+			await Post.updateMany(
+				{
+					_id: { $in: payloadId },
+					"recipients.user": payload._id,
+					"recipients.received": false,
+				},
+				{
+					$set: { "recipients.$[elem].received": true },
+				},
+				{
+					arrayFilters: [{ "elem.user": payload.id }],
+				}
+			);
+
+			
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ message: "Server Error" });
@@ -110,13 +139,13 @@ module.exports = {
 			console.error(error);
 			res.status(500).json({ message: "Server Error" });
 		}
-	}
+	},
 };
 // GetPost: async (req, res) => {
 // 	try {
 // 		// must add fr first // this is for temporary
-// 		const tokenPayload = req.tokenPayload;
-// 		console.log("tokenPayload: ", tokenPayload.phone);
+// 		const payload = req.payload;
+// 		console.log("payload: ", payload.phone);
 // 		const posts = await Post.find()
 // 			.populate({
 // 				path: "owner",

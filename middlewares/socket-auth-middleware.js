@@ -23,7 +23,7 @@ const socketAuthMiddleware = (socket, next) => {
 				token,
 				process.env.ACCESS_TOKEN_SECRET
 				);
-			socket.tokenPayload = decoded;
+			socket.payload = decoded;
 			socket.isAuthenticated = true;
 		} catch (error) {
 			console.error("Invalid token:", error.message);

@@ -14,7 +14,7 @@ const PostSchema = new mongoose.Schema(
 		recipients: [
 			{
 				user: { type: mongoose.Schema.Types.ObjectId, ref: "users" },
-				sent: { type: Boolean, default: false },
+				received: { type: Boolean, default: false },
 			},
 		],
 		createdAt: { type: Date, default: Date.now },

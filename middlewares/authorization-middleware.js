@@ -13,9 +13,7 @@ function extractToken(authHeader) {
 }
 
 module.exports = {
-    
     VerifyAccessToken :(req, res, next) => {
-    
         const authHeader = req.header("Authorization");
         
         if (!authHeader) {
@@ -28,7 +26,7 @@ module.exports = {
         const token = extractToken(authHeader);
         try {
             const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-            req.tokenPayload = decoded; 
+            req.payload = decoded; 
             next(); 
         } catch (error) {
             console.error(error);
@@ -49,7 +47,7 @@ module.exports = {
         const token = extractToken(authHeader);
         try {
             const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-            req.tokenPayload = decoded; 
+            req.payload = decoded; 
             // console.log(decoded);
             next(); 
         } catch (error) {
@@ -57,6 +55,5 @@ module.exports = {
             res.status(401).json({ message: "Unauthorized - Invalid token" });
         }
     },
-
 
 };
