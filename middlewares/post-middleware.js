@@ -40,7 +40,7 @@ module.exports = {
     UploadPhoto: (req, res, next) => {
 		try {
 			
-			const phone = req.tokenPayload.phone; //folder
+			const phone = req.payload.phone; //folder
 			
 			console.log("Uploading phôto");
 			if (!phone) {

@@ -13,8 +13,8 @@ router.post(
 );
 router.get(
 	"/:phone/:filename",
-	AuthorizationMiddleware.VerifyAccessToken,
-	PostMiddleware.AuthorizeAccess,
+	// AuthorizationMiddleware.VerifyAccessToken,
+	// PostMiddleware.AuthorizeAccess,
 	PostsController.GetImage
 );
 

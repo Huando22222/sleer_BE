@@ -28,6 +28,11 @@ router.post(
 	AuthorizationMiddleware.VerifyRefreshToken,
 	UsersController.RefreshToken
 );
+router.post(
+	"/add-friend-request",
+	AuthorizationMiddleware.VerifyAccessToken,
+	UsersController.AddFriendRequest,
+);
 router.post("/login", UsersController.Login);
 router.post("/logout", AuthorizationMiddleware.VerifyAccessToken,UsersController.Logout);
 router.post("/register", UsersController.Register);

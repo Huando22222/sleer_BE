@@ -8,9 +8,9 @@ const User = require("../models/user");
 module.exports = {
 	NewPost: async (req, res) => {
 		try {
-			const { id, content, nonRecipients } = req.body;
+			const id = req.payload.id;
+			const {  content, nonRecipients } = req.body;
 			// const phone = req.payload.phone;
-			//chua xac thuc nguoi dang bai
 			console.log("body: ", id);
 
 			const user = await User.findById(id).populate("friends");
@@ -18,23 +18,14 @@ module.exports = {
 				return res.status(404).json({ message: "User not found" });
 			}
 
-			let recipients = [];
-			if (!nonRecipients || nonRecipients.length === 0) {
-				recipients = user.friends.map((friend) => ({
+			const recipients = user.friends
+				.filter(
+					(friend) => !nonRecipients?.includes(friend._id.toString())
+				)
+				.map((friend) => ({
 					user: friend._id,
 					sent: false,
 				}));
-			} else {
-				recipients = user.friends
-					.filter(
-						(friend) =>
-							!nonRecipients.includes(friend._id.toString())
-					)
-					.map((friend) => ({
-						user: friend._id,
-						sent: false,
-					}));
-			}
 
 			const post = new Post({
 				owner: id,
@@ -44,14 +35,44 @@ module.exports = {
 			});
 
 			await post.save();
-			//chua xac thuc nguoi dung da nhan hay chua //ack
+			//chua xac thuc nguoi dung da nhan hay chua //ack //if recieved => sent: true
+			
+			const populatedPost = await Post.findById(post._id)
+				.populate({
+					path: "owner",
+					select: "_id displayName avatar phone",
+				})
+				.select("-recipients");
+			let updatedRecipients = [];
+
 			recipients.forEach((recipient) => {
-				req.io.to(recipient.user.toString()).emit("new_post", {
-					postId: post._id,
-					ownerId: user._id,
-					ownerName: user.displayName,
-				});
+				req.io
+					.to(recipient.user.toString())
+					.emit("new_post", populatedPost, async (ack) => {
+						if (ack) {
+							updatedRecipients.push(recipient.user);
+							console.log(
+								`Client ${recipient.user.toString()} đã nhận postId: ${
+									post._id
+								}`
+							);
+						}
+					});
 			});
+
+			if (updatedRecipients.length > 0) {
+				await Post.updateMany(
+					{
+						_id: post._id,
+						"recipients.user": { $in: updatedRecipients },
+					},
+					{ $set: { "recipients.$[].sent": true } }
+				);
+				console.log(
+					`Cập nhật thành công cho các recipient: ${updatedRecipients}`
+				);
+			}
+
 			res.status(200).json({
 				message: "posted successfully",
 			});
@@ -73,7 +94,7 @@ module.exports = {
 			}
 
 			const posts = await Post.find(
-				{ _id: { $in: payloadId } }, //?? id or _id ??
+				{ _id: { $in: payloadId } }, 
 				{ recipients: 0 }
 			)
 				.populate({
@@ -121,7 +142,6 @@ module.exports = {
 				phone,
 				filename
 			);
-			// Check if the file exists
 			fs.access(filePath, fs.constants.F_OK, (err) => {
 				if (err) {
 					console.error("File not found:", filePath);

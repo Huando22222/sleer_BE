@@ -18,9 +18,9 @@ const io = require("socket.io")(server, {
 	pingInterval: 5000, 
 	pingTimeout: 2000,
 });
+
 // require('./sockets/chat')(io);
 require('./sockets/post-chat')(io);
-
 
 app.use((req, res, next) => {
 	req.io = io;
@@ -39,7 +39,7 @@ mongoose
 		console.log(
 			"db connected\n----------------------------------------------------"
 		)
-	)
+	);
 	
 app.use(cors());
 // const corsOptionsRoute1 = {
