@@ -18,16 +18,25 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 router.post("/delete-user-test-only", UsersController.DeleteUser);
 router.post(
+	"/token-test-only",
+	AuthorizationMiddleware.VerifyAccessToken,
+	UsersController.TokenUser
+);
+
+router.post(
 	"/refresh-token",
 	AuthorizationMiddleware.VerifyRefreshToken,
 	UsersController.RefreshToken
+);
+router.post(
+	"/add-friend-request",
+	AuthorizationMiddleware.VerifyAccessToken,
+	UsersController.AddFriendRequest,
 );
 router.post("/login", UsersController.Login);
 router.post("/logout", AuthorizationMiddleware.VerifyAccessToken,UsersController.Logout);
 router.post("/register", UsersController.Register);
 router.post("/profile", upload.single("avatar"), UsersController.profile);
 router.post("/profileUpdate", upload.single("avatar"), UsersController.profileUpdate);
-// router.post("/", UsersController.test);
-
 
 module.exports = router;

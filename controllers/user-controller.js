@@ -34,24 +34,14 @@ function convertToLocalPhoneNumber(phoneNumber) {
 	}
 }
 
-const decodeToken = (token) => {
-	try {
-		const payload = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-		console.log("Payload:", payload);
-		return payload;
-	} catch (error) {
-		console.error("Invalid token:", error.message);
-		return null;
-	}
-};
 
 module.exports = {
 	//delete refresh token
 	Logout: async (req, res) => {
 		try {
-			const tokenPayload = req.tokenPayload;
+			const payload = req.payload;
 			const user = await User.findOneAndUpdate(
-				{ phone: tokenPayload.phone },
+				{ phone: payload.phone },
 				{ refreshToken: "" },
 				{ new: true }
 			);
@@ -64,6 +54,41 @@ module.exports = {
 		}
 	},
 
+	AddFriendRequest: async (req, res) => {
+		//! user accept //
+		try {
+			const id = req.payload.id; 
+			const { idFriend } = req.body; 
+
+			const user = await User.findById(id);
+			const friend = await User.findById(idFriend);
+
+			if (!user || !friend) {
+				return res.status(404).json({ message: "User not found" });
+			}
+
+			if (
+				user.friends.includes(idFriend) ||
+				friend.friends.includes(id)
+			) {
+				return res.status(400).json({ message: "Already friends" });
+			}
+
+			user.friends.push(idFriend);
+			friend.friends.push(id);
+
+			await user.save();
+			await friend.save();
+
+			res.status(200).json({
+				message: "Friend request accepted successfully",
+			});
+		} catch (error) {
+			console.error(error);
+			res.status(500).json({ message: "Internal Server Error" });
+		}
+	},
+
 	DeleteUser: async (req, res) => {
 		try {
 			await User.deleteMany();
@@ -71,17 +96,26 @@ module.exports = {
 			res.status(200).json({ message: "All users have been deleted." });
 		} catch (error) {
 			res.status(500).json({ message: "Internal Server Error" });
-			console.error("error when delete user " + error.message);
+			console.error("test message: " + error.message);
+		}
+	},
+	TokenUser: async (req, res) => {
+		try {
+			const token = req.payload.id;
+			res.status(200).json({ message: "token id: " + token });
+		} catch (error) {
+			res.status(500).json({ message: "Internal Server Error" });
+			console.error("test message: " + error.message);
 		}
 	},
 
 	RefreshToken: async (req, res) => {
 		//check refresh token in user table
 		try {
-			const tokenPayload = req.tokenPayload;
+			const payload = req.payload;
 			// phai check con trong db khong da
 			const accessToken = jwt.sign(
-				{ phone: tokenPayload.phone },
+				{ phone: payload.phone },
 				process.env.ACCESS_TOKEN_SECRET,
 				{ expiresIn: "5d" }
 			);
@@ -97,47 +131,41 @@ module.exports = {
 
 			const acc = await Account.findOne({phone: phone});
 
-			// jwt + id acc
 			if (acc && (await bcrypt.compare(password, acc.password))) {
+				const user = await User.findOne({ phone })
+					.populate({
+						path: "friends",
+						select: "_id displayName avatar phone",
+					})
+					.sort({ createdAt: -1 });
+				if (!user) {
+					return res.status(404).json({ message: "User not found" });
+				}
+				const payload = {
+					id: user.id,
+					phone: user.phone,
+				};
+
 				const accessToken = jwt.sign(
-					{ phone: phone },
-					process.env.ACCESS_TOKEN_SECRET,
-					{ expiresIn: "5d" }
+					payload,
+					process.env.ACCESS_TOKEN_SECRET
+					// { expiresIn: "5d" }
 				);
 				const refreshToken = jwt.sign(
-					{ phone: phone },
+					payload,
 					process.env.REFRESH_TOKEN_SECRET
 					// { expiresIn: '30s' }
 				);
-				const user = await User.findOneAndUpdate(
-					{ phone: phone },
-					{ refreshToken: refreshToken },
-					{ new: true }
-				);
-				console.log("login: ", user, accessToken);
+
+				user.refreshToken = refreshToken;
+				await user.save();
+
+				console.log("login: ", accessToken); //, user
 				res.status(200).json({
 					message: "Login successful",
 					user: user,
 					accessToken,
 				});
-				// const user = await User.findOne({ idAcc: acc._id });
-				// let room= [];
-				// /*const */
-				// if (user !== null) {
-				// 	const rooms = await Room.find({
-				// 		_id: { $in: user.rooms },
-				// 	}).populate("users");
-				// 	room = rooms;
-				// 	console.log(room);
-				// }
-
-				// console.log("user has:" + room);
-				// res.status(200).json({
-				// 	message: "Login successful",
-				// 	// account: acc,
-				// 	// user: user,
-				// 	// room: room,
-				// });
 			} else {
 				res.status(401).json("thông tin xác thực không đúng.");
 			}
@@ -227,13 +255,14 @@ module.exports = {
 
 		try {
 			const { phone, password } = req.body;
+			console.log("ok");
 			console.log(phone, password);
 
 			let domesticPhoneNumber = convertToLocalPhoneNumber(phone);
 			const acc = await Account.findOne({
 				phone: domesticPhoneNumber,
 			}).session(session);
-
+			console.log("ok");
 			if (acc !== null) {
 				console.log("acc already exists " + acc);
 				await session.abortTransaction();
@@ -243,23 +272,26 @@ module.exports = {
 					message: "acc already exists",
 				});
 			}
+			console.log("ok");
 			const saltRounds = parseInt(process.env.SALT_ROUNDS, 10);
 			const hashedPassword = await bcrypt.hash(password, saltRounds);
-			console.log("hashedPassword: ", hashedPassword);
 			const account = new Account({
 				phone: domesticPhoneNumber,
 				password: hashedPassword,
 			});
 			await account.save({ session });
-
-			const user = new User({ phone: domesticPhoneNumber });
+			console.log("ok");
+			const user = new User({ phone: domesticPhoneNumber, friends: [], });
 			await user.save({ session });
 
+			user.friends.push(user._id);
+			await user.save({ session });
+			
 			await session.commitTransaction();
 			session.endSession();
 
 			console.log(
-				"Đã đăng ký tài khoản thành công + user",
+				"Đã đăng ký tài khoản thành công " + user,
 				domesticPhoneNumber,
 				password
 			);
